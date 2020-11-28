@@ -57,6 +57,15 @@
 					{{#if title_link}}
 						<a href="{{getURL title_link}}" target="_blank" rel="noopener noreferrer">{{title}}</a>
 						{{#if title_link_download}}
+							{{#if isODF}}
+								<div class="attachment-viewer" style="display: inline-block">{{> icon icon="download"}}</div>
+								<div style="display: none">
+									<form action="" method="POST" target="_blank" id="collabora-submit-form-{{fileId}}">
+										<input id="collabora-form-access-token-{{fileId}}" name="access_token" value="" type="hidden" />
+										<input type="submit" value="Load Collabora Online" >
+									</form>
+								</div>
+							{{/if}}
 							<a class="attachment-download-icon rc-tooltip" aria-label="{{_ 'Download'}}" href="{{getURL title_link}}?download" target="_blank" download="{{title}}" rel="noopener noreferrer">{{> icon icon="download"}}</a>
 						{{/if}}
 					{{else}}

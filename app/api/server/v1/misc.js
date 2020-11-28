@@ -6,6 +6,8 @@ import { TAPi18n } from 'meteor/rocketchat:tap-i18n';
 import { EJSON } from 'meteor/ejson';
 import { DDPRateLimiter } from 'meteor/ddp-rate-limiter';
 import s from 'underscore.string';
+import { jws } from 'jsrsasign';
+import xml2js from 'xml2js';
 
 import { hasRole, hasPermission } from '../../../authorization/server';
 import { Info } from '../../../utils/server';
@@ -15,6 +17,7 @@ import { API } from '../api';
 import { getDefaultUserFields } from '../../../utils/server/functions/getDefaultUserFields';
 import { getURL } from '../../../utils/lib/getURL';
 import { StdOut } from '../../../logger/server/streamer';
+import { FileUpload } from '../../../file-upload/server/lib/FileUpload';
 
 
 // DEPRECATED
@@ -273,3 +276,33 @@ const methodCall = () => ({
 // because restivus does not provide 'this.userId' if 'authRequired: false'
 API.v1.addRoute('method.call/:method', { authRequired: true, rateLimiterOptions: false }, methodCall());
 API.v1.addRoute('method.callAnon/:method', { authRequired: false, rateLimiterOptions: false }, methodCall());
+
+API.v1.addRoute('token.encode/:rid/:userId/:fileId', { authRequired: false }, {
+	get() {
+		const encodedToken = FileUpload.generateJWTToFileUrls({ rid: this.urlParams.rid, userId: this.urlParams.userId, fileId: this.urlParams.fileId });
+		console.log(`api: token.encode: get: response: ${ encodedToken }`);
+		return API.v1.success({ result: encodedToken });
+	},
+});
+
+API.v1.addRoute('token.decode/:token', { authRequired: false }, {
+	get() {
+		const tk = this.urlParams.token;
+		console.log(`api: token.decode/${ tk }: get`);
+		const decodedToken = jws.JWS.parse(tk);
+		return API.v1.success({ result: decodedToken });
+	},
+});
+
+API.v1.addRoute('xml.parser', { authRequired: false }, {
+	get() {
+		// console.log(`api: xml.parser: get: request: body: ${ JSON.stringify(this.bodyParams) }`);
+		const parser = new xml2js.Parser({
+			explicitRoot: true,
+		});
+		const parseString = Meteor.wrapAsync(parser.parseString);
+		const doc = parseString(this.bodyParams);
+		// console.log(`api: xml.parser: get: response: ${ JSON.stringify(doc) }`);
+		return API.v1.success(doc);
+	},
+});

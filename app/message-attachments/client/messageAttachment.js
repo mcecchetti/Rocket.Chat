@@ -2,7 +2,7 @@ import { Meteor } from 'meteor/meteor';
 import { Template } from 'meteor/templating';
 
 import { DateFormat } from '../../lib';
-import { getURL } from '../../utils/client';
+import { APIClient, getURL } from '../../utils/client';
 import { renderMessageBody, createCollapseable } from '../../ui-utils';
 
 const colors = {
@@ -64,6 +64,24 @@ async function renderPdfToCanvas(canvasId, pdfLink) {
 }
 
 createCollapseable(Template.messageAttachment, (instance) => (instance.data && (instance.data.collapsed || (instance.data.settings && instance.data.settings.collapseMediaByDefault))) || false);
+
+Template.messageAttachment.events({
+	async 'click .attachment-viewer'(/* event */) {
+		const fileId = Template.parentData(1).msg.file._id;
+		console.log(`Attachment click handler: file id: ${ fileId }`);
+		// const credentials = APIClient.getCredentials();
+		// console.log(`Attachment click handler: credential: ${ JSON.stringify(credentials) }`);
+		const appId = '4606d1ee-9c83-499a-9dc7-84882dfd53b4';
+		const res = await APIClient.get(`apps/public/${ appId }/collaboraURL/${ fileId }/${ Meteor.userId() }`);
+		console.log(`Attachment click handler: apps-api: /collaboraURL/${ fileId }/${ Meteor.userId() }: response: ${ JSON.stringify(res) }`);
+		console.log(`Attachment click handler: apps-api: response: URL: ${ res.URL }, token: ${ res.token }`);
+
+		const wopiSrc = getURL(`/api/apps/public/${ appId }/wopi/files/${ fileId }`, { full: true });
+		document.getElementById(`collabora-submit-form-${ fileId }`).action = `${ res.URL }WOPISrc=${ wopiSrc }`;
+		document.getElementById(`collabora-form-access-token-${ fileId }`).value = res.token;
+		document.getElementById(`collabora-submit-form-${ fileId }`).submit();
+	},
+});
 
 Template.messageAttachment.helpers({
 	parsedText() {
@@ -129,6 +147,17 @@ Template.messageAttachment.helpers({
 		if (
 			this.type === 'file'
 			&& this.title_link.endsWith('.pdf')
+			&& Template.parentData(1).msg.file
+		) {
+			this.fileId = Template.parentData(1).msg.file._id;
+			return true;
+		}
+		return false;
+	},
+	isODF() {
+		if (
+			this.type === 'file'
+			&& (this.title_link.endsWith('.odt') || this.title_link.endsWith('.ods'))
 			&& Template.parentData(1).msg.file
 		) {
 			this.fileId = Template.parentData(1).msg.file._id;
